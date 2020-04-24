@@ -82,6 +82,10 @@ window.ExportHtml = (Popup) => {
       // eslint-disable-next-line no-self-assign
       elem.src = elem.src;
     });
+    Array.from(document.querySelectorAll('.is-editable')).forEach(elem => {
+      elem.classList.remove('is-editable')
+    })
+
   };
 
   const getBoardSlug = () => {
