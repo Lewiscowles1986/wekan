@@ -133,6 +133,45 @@ window.ExportHtml = (Popup) => {
     });
   };
 
+  const removeCssUrlSurround = url => {
+    const working = url || "";
+    return working
+      .split("url(")
+      .join("")
+      .split("\")")
+      .join("")
+      .split("\"")
+      .join("")
+      .split("')")
+      .join("")
+      .split("'")
+      .join("")
+      .split(")")
+      .join("");
+  };
+
+  const getCardCovers = () => {
+    return Array.from(document.querySelectorAll('.minicard-cover'))
+      .filter(elem => elem.style['background-image'])
+  }
+
+  const downloadCardCovers = async (elements, zip, boardSlug) => {
+    await asyncForEach(elements, async elem => {
+      const response = await fetch(removeCssUrlSurround(elem.style['background-image']));
+      const responseBody = await response.blob();
+      const filename = removeCssUrlSurround(elem.style['background-image'])
+        .split('/')
+        .pop()
+        .split('?')
+        .shift()
+        .split('#')
+        .shift();
+      const fileFullPath = `${boardSlug}/covers/${filename}`;
+      zip.file(fileFullPath, responseBody);
+      elem.style = "background-image: url('" + `covers/${filename}` + "')";
+    });
+  };
+
   const addBoardHTMLToZip = (boardSlug, zip) => {
     ensureSidebarRemoved();
     const htmlOutputPath = `${boardSlug}/index.html`;
@@ -152,6 +191,7 @@ window.ExportHtml = (Popup) => {
 
     await downloadStylesheets(getStylesheetList(), zip);
     await downloadSrcAttached(getSrcAttached(), zip, boardSlug);
+    await downloadCardCovers(getCardCovers(), zip, boardSlug);
 
     addBoardHTMLToZip(boardSlug, zip);
 
