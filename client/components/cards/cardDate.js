@@ -269,6 +269,14 @@ class CardStartDate extends CardDate {
       self.date.set(moment(self.data().getStart()));
     });
   }
+  
+  onRendered() {
+    this.find('.prefix').innerText = `${TAPi18n.__('card-start-on')} `;
+  }
+
+  timeClasses() {
+    return 'dt-x-start';
+  }
 
   classes() {
     let classes = 'start-date' + ' ';
@@ -303,6 +311,14 @@ class CardDueDate extends CardDate {
     self.autorun(() => {
       self.date.set(moment(self.data().getDue()));
     });
+  }
+  
+  onRendered() {
+    this.find('.prefix').innerText = `${TAPi18n.__('card-due-on')} `;
+  }
+
+  timeClasses() {
+    return 'dt-x-due';
   }
 
   classes() {
@@ -340,9 +356,17 @@ class CardEndDate extends CardDate {
       self.date.set(moment(self.data().getEnd()));
     });
   }
+  
+  onRendered() {
+    this.find('.prefix').innerText = `${TAPi18n.__('card-end-on')} `;
+  }
+
+  timeClasses() {
+    return 'dt-x-end';
+  }
 
   classes() {
-    let classes = 'end-date' + ' ';
+    let classes = 'dt-x-end end-date' + ' ';
     const dueAt = this.data().getDue();
     const theDate = this.date.get();
     if (!dueAt) classes += '';
