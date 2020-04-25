@@ -18,19 +18,23 @@ window.ExportHtml = (Popup) => {
     }
   };
 
-  const getPageHtmlString = () => {
-    return `<!doctype html>${
-      window.document.querySelector('html').outerHTML
-    }`;
+  const getPageHtmlString = (doc) => {
+    return `<!doctype html>${doc.outerHTML}`;
   };
 
-  const removeAnchors = htmlString => {
-    const replaceOpenAnchor = htmlString.replace(new RegExp('<a ', 'gim'), '<span ');
-    return replaceOpenAnchor.replace(new RegExp('<\/a', 'gim'), '</span');
-  };
+  const changeTagName = (element, newTagName) => {
+    // Create a replacement tag of the desired type
+    var replacement = document.createElement(newTagName);
+    Array.from(element.attributes).forEach(attribute => {
+      replacement.setAttribute(attribute.nodeName, attribute.nodeValue);
+    });
+    replacement.innerHTML = element.innerHTML;
+    element.parentNode.replaceChild(replacement, element);
+  }
 
-  const ensureSidebarRemoved = () => {
-    document.querySelector('.board-sidebar.sidebar').remove();
+  const ensureSidebarRemoved = (fragment) => {
+    fragment.querySelector('.board-sidebar.sidebar').remove();
+    return fragment;
   };
 
   const addJsonExportToZip = async (zip, boardSlug) => {
@@ -45,56 +49,97 @@ window.ExportHtml = (Popup) => {
     document.querySelector('.board-header-btn.js-toggle-sidebar').click();
   };
 
-  const cleanBoardHtml = () => {
-    Array.from(document.querySelectorAll('script')).forEach(elem =>
+  const cleanBoardHtml = (boardSlug) => {
+    let fragment = document.documentElement.cloneNode(true);
+
+    fragment.querySelector('.h-feed').classList.remove('h-feed');
+    fragment.querySelector('body').classList.add('h-feed');
+
+    Array.from(fragment.querySelectorAll('script')).forEach(elem =>
       elem.remove(),
     );
     Array.from(
-      document.querySelectorAll('link:not([rel="stylesheet"])'),
+      fragment.querySelectorAll('link:not([rel="stylesheet"])'),
     ).forEach(elem => elem.remove());
-    document.querySelector('#header-quick-access').remove();
+    fragment.querySelector('#header-quick-access').remove();
     Array.from(
-      document.querySelectorAll('#header-main-bar .board-header-btns'),
+      fragment.querySelectorAll('#header-main-bar .board-header-btns'),
     ).forEach(elem => elem.remove());
-    Array.from(document.querySelectorAll('.list-composer')).forEach(elem =>
+    Array.from(fragment.querySelectorAll('.list-composer')).forEach(elem =>
       elem.remove(),
     );
     Array.from(
-      document.querySelectorAll(
+      fragment.querySelectorAll(
         '.list-composer,.js-card-composer, .js-add-card',
       ),
     ).forEach(elem => elem.remove());
     Array.from(
-      document.querySelectorAll('.js-perfect-scrollbar > div:nth-of-type(n+2)'),
+      fragment.querySelectorAll('.js-perfect-scrollbar > div:nth-of-type(n+2)'),
     ).forEach(elem => elem.remove());
-    Array.from(document.querySelectorAll('.js-perfect-scrollbar')).forEach(
+    Array.from(fragment.querySelectorAll('.js-perfect-scrollbar')).forEach(
       elem => {
         elem.style = 'overflow-y: auto !important;';
         elem.classList.remove('js-perfect-scrollbar');
       },
     );
-    Array.from(document.querySelectorAll('[href]:not(link)')).forEach(elem =>
-      elem.attributes.removeNamedItem('href'),
-    );
-    Array.from(document.querySelectorAll('[href]')).forEach(elem => {
+    Array.from(fragment.querySelectorAll('[href]:not(link)')).forEach(elem => {
+      elem.attributes.removeNamedItem('href');
+    });
+    Array.from(fragment.querySelectorAll('[href]')).forEach(elem => {
       // eslint-disable-next-line no-self-assign
       elem.href = elem.href;
       // eslint-disable-next-line no-self-assign
       elem.src = elem.src;
     });
-    Array.from(document.querySelectorAll('.is-editable')).forEach(elem => {
+    Array.from(fragment.querySelectorAll('.is-editable')).forEach(elem => {
       elem.classList.remove('is-editable')
     })
+    Array.from(fragment.querySelectorAll('a')).forEach(elem => {
+      if (!Boolean(elem.classList.contains('u-url'))) {
+        changeTagName(elem, 'span');
+      }
+    });
 
+    fragment.querySelector('.u-url.p-name').remove();
+    fragment.querySelector('h1').classList.add('p-name');
+    fragment.querySelector('h1.p-name').innerHTML = `<a class="u-url">${
+      fragment.querySelector('h1.p-name').innerText
+    }</a>`;
+    fragment.querySelector('h1.p-name > .u-url').href = `../${boardSlug}/`;
+
+    Array.from(
+      fragment.querySelectorAll('.minicard-title.p-name')
+    ).forEach(elem => {
+      elem.innerHTML = `${elem.innerText}`;
+      changeTagName(elem, 'h3');
+    });
+
+    fragment.querySelector(
+      '.is-sibling-sidebar-open'
+    ).classList.remove('is-sibling-sidebar-open');
+
+    return ensureSidebarRemoved(fragment);
   };
 
   const getBoardSlug = () => {
     return window.location.href.split('/').pop();
   };
 
-  const getStylesheetList = () => {
+  const cleanFileFromURLString = filename => {
+    return decodeURIComponent(
+      filename
+        .split('/')
+        .pop()
+        .split('?')
+        .shift()
+        .split('#')
+        .shift()
+    );
+  }
+
+  const getStylesheetList = (doc) => {
     return Array.from(
-      document.querySelectorAll('link[href][rel="stylesheet"]'),
+      doc.querySelectorAll('link[href][rel="stylesheet"]'),
     );
   };
 
@@ -107,33 +152,25 @@ window.ExportHtml = (Popup) => {
         new RegExp('packages\/[^\/]+\/upstream\/', 'gim'), '../'
       );
 
-      const filename = elem.href
-        .split('/')
-        .pop()
-        .split('?')
-        .shift();
+      const filename = cleanFileFromURLString(elem.href);
       const fileFullPath = `style/${filename}`;
       zip.file(fileFullPath, finalResponse);
-      elem.href = `../${fileFullPath}`;
+      elem.href = encodeURI(`../${fileFullPath}`);
     });
   };
 
-  const getSrcAttached = () => {
-    return Array.from(document.querySelectorAll('[src]'));
+  const getSrcAttached = (doc) => {
+    return Array.from(doc.querySelectorAll('[src]'));
   };
 
   const downloadSrcAttached = async (elements, zip, boardSlug) => {
     await asyncForEach(elements, async elem => {
       const response = await fetch(elem.src);
       const responseBody = await response.blob();
-      const filename = elem.src
-        .split('/')
-        .pop()
-        .split('?')
-        .shift();
+      const filename = cleanFileFromURLString(elem.src);
       const fileFullPath = `${boardSlug}/${elem.tagName.toLowerCase()}/${filename}`;
       zip.file(fileFullPath, responseBody);
-      elem.src = `./${elem.tagName.toLowerCase()}/${filename}`;
+      elem.src = encodeURI(`./${elem.tagName.toLowerCase()}/${filename}`);
     });
   };
 
@@ -154,33 +191,26 @@ window.ExportHtml = (Popup) => {
       .join("");
   };
 
-  const getCardCovers = () => {
-    return Array.from(document.querySelectorAll('.minicard-cover'))
+  const getCardCovers = (doc) => {
+    return Array.from(doc.querySelectorAll('.minicard-cover'))
       .filter(elem => elem.style['background-image'])
   }
 
-  const downloadCardCovers = async (elements, zip, boardSlug) => {
-    await asyncForEach(elements, async elem => {
-      const response = await fetch(removeCssUrlSurround(elem.style['background-image']));
-      const responseBody = await response.blob();
-      const filename = removeCssUrlSurround(elem.style['background-image'])
-        .split('/')
-        .pop()
-        .split('?')
-        .shift()
-        .split('#')
-        .shift();
-      const fileFullPath = `${boardSlug}/covers/${filename}`;
-      zip.file(fileFullPath, responseBody);
-      elem.style = "background-image: url('" + `covers/${filename}` + "')";
+  const fixCardCovers = elements => {
+    elements.forEach(elem => {
+      const filename = cleanFileFromURLString(
+        removeCssUrlSurround(elem.style['background-image'])
+      );
+      const imgURI = `./img/${filename}`;
+
+      elem.style = `background-image: url("${encodeURI(imgURI)}")`;
     });
   };
 
-  const addBoardHTMLToZip = (boardSlug, zip) => {
-    ensureSidebarRemoved();
+  const addBoardHTMLToZip = (boardSlug, zip, doc) => {
     const htmlOutputPath = `${boardSlug}/index.html`;
     zip.file(htmlOutputPath, new Blob([
-      removeAnchors(getPageHtmlString())
+      getPageHtmlString(doc)
     ], { type: 'application/html' }));
   };
 
@@ -191,16 +221,15 @@ window.ExportHtml = (Popup) => {
     await addJsonExportToZip(zip, boardSlug);
     Popup.close();
     closeSidebar();
-    cleanBoardHtml();
+    let doc = cleanBoardHtml(boardSlug);
 
-    await downloadStylesheets(getStylesheetList(), zip);
-    await downloadSrcAttached(getSrcAttached(), zip, boardSlug);
-    await downloadCardCovers(getCardCovers(), zip, boardSlug);
+    await downloadStylesheets(getStylesheetList(doc), zip);
+    await downloadSrcAttached(getSrcAttached(doc), zip, boardSlug);
+    fixCardCovers(getCardCovers(doc));
 
-    addBoardHTMLToZip(boardSlug, zip);
+    addBoardHTMLToZip(boardSlug, zip, doc);
 
     const content = await zip.generateAsync({ type: 'blob' });
     saveAs(content, `${boardSlug}.zip`);
-    window.location.reload();
   }
 };

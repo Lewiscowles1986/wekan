@@ -12,7 +12,7 @@ template(name="minicard")
           .fa.fa-arrows
     if cover
       .minicard-cover(style="background-image: url('{{cover.url}}');")
-        img.u-featured(src="{{cover.url}}" style="display: none")
+        img.u-featured.sr-only.sr-only-focusable(src="{{cover.url}}")
     if labels
       .minicard-labels
         each labels
@@ -101,7 +101,7 @@ template(name="minicard")
       if getDescription
         .badge.badge-state-image-only(title=getDescription)
           span.badge-icon.fa.fa-align-left
-            span.p-summary(style="display: none;") {{getDescription}}
+            span.p-summary.sr-only.sr-only-focusable {{getDescription}}
       if getVoteQuestion
         .badge.badge-state-image-only(title=getVoteQuestion)
           span.badge-icon.fa.fa-thumbs-up
@@ -111,13 +111,13 @@ template(name="minicard")
           span.badge-icon.fa.fa-paperclip
           span.badge-text
             span {{attachments.count}}
-            span(style="display: none") Attachments
+            span.sr-only.sr-only-focusable Attachments
       if checklists.count
         .badge(class="{{#if checklistFinished}}is-finished{{/if}}")
           span.badge-icon.fa.fa-check-square-o
           span.badge-text.check-list-text.p-x-progress
-            span(style="display: none") Sub-Tasks: 
+            span.sr-only.sr-only-focusable Sub-Tasks:
             span.p-x-done-subtask {{checklistFinishedCount}}
             span /
             span.p-x-total-subtask {{checklistItemCount}}
-            span(style="display: none") Completed
+            span.sr-only.sr-only-focusable Completed

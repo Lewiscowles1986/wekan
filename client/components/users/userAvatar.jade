@@ -1,9 +1,11 @@
 template(name="userAvatar")
   a.member.js-member.h-card(title="{{userData.profile.fullname}}")
-    span.p-nickname(style="display: none") {{userData.nickname}}
-    span.p-name(style="display: none") {{userData.nickname}}
+    if userData.username
+      span.p-nickname.sr-only.sr-only-focusable {{userData.username}}
+    if userData.profile.fullname
+      span.p-name.sr-only.sr-only-focusable {{userData.profile.fullname}}
     if userData.profile.avatarUrl
-      img.avatar.avatar-image.u-logo(src="{{userData.profile.avatarUrl}}")
+      img.avatar.avatar-image.u-photo(src="{{userData.profile.avatarUrl}}")
     else
       +userAvatarInitials(userId=userData._id)
 
